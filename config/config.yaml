@@ -1,0 +1,20 @@
+# Default configuration for LocalLightEval
+defaults:
+  - _self_
+  - model: default
+  - inference: default
+  - data: default
+  - output: default
+
+# Hydra configuration
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  sweep:
+    dir: multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra:job.num}
+
+# Global settings
+experiment_name: null
+seed: 42
+debug: false

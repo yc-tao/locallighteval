@@ -1,0 +1,6 @@
+# @package output
+base_dir: "./outputs"
+run_name: null
+save_predictions: true
+save_metrics: true
+save_detailed_results: true

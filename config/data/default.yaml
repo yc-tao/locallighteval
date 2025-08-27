@@ -1,0 +1,5 @@
+# @package data
+input_path: "/ssd-shared/report-distillation.json"
+text_key: "text"
+label_key: "label"
+max_samples: null

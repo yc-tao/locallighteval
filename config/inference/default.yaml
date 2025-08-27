@@ -1,0 +1,7 @@
+# @package inference
+max_tokens: 512
+temperature: 0.0
+top_p: 1.0
+top_k: -1
+batch_size: 32
+instruction: "Classify the following text as positive (1) or negative (0). Respond with only the number."
