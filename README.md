@@ -44,15 +44,29 @@ pip install -e .
 
 ### 1. Prepare Your Data
 
-Your input data should be a JSON Lines file where each line contains:
-- `text`: The input text to classify
-- `label`: Binary label (0 or 1, or boolean)
+LocalLightEval supports two JSON data formats:
 
-Example:
+#### JSON Lines Format (.jsonl)
+One JSON object per line:
 ```json
 {"text": "This movie is great!", "label": 1}
 {"text": "Boring and poorly made.", "label": 0}
 ```
+
+#### JSON Array Format (.json)
+A JSON array containing objects:
+```json
+[
+  {"text": "This movie is great!", "label": 1},
+  {"text": "Boring and poorly made.", "label": 0}
+]
+```
+
+**Required fields:**
+- `text`: The input text to classify (string)
+- `label`: Binary label (0 or 1, or boolean)
+
+The system automatically detects the format and handles both efficiently.
 
 ### 2. Basic Usage
 
