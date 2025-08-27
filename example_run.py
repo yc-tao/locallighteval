@@ -37,10 +37,24 @@ if __name__ == "__main__":
     
     print("\nTo run the evaluation with this sample data:")
     print(f"python -m locallighteval.main data.input_path={sample_file}")
-    print("\nOr with a different model:")
-    print(f"python -m locallighteval.main data.input_path={sample_file} model=llama2_7b")
+    
+    print("\nOr with different models (any HuggingFace model or local path):")
+    print(f"python -m locallighteval.main data.input_path={sample_file} model.name=meta-llama/Llama-2-7b-chat-hf")
+    print(f"python -m locallighteval.main data.input_path={sample_file} model.name=mistralai/Mistral-7B-Instruct-v0.1")
+    print(f"python -m locallighteval.main data.input_path={sample_file} model.name=/path/to/local/model")
+    
     print("\nOr with few-shot prompting:")
     print(f"python -m locallighteval.main data.input_path={sample_file} inference=few_shot")
+    
+    print("\nCombining model and inference settings:")
+    print(f"python -m locallighteval.main data.input_path={sample_file} model.name=meta-llama/Llama-2-7b-chat-hf inference=few_shot")
+    
+    print("\nWith custom model parameters:")
+    print(f"python -m locallighteval.main data.input_path={sample_file} \\")
+    print(f"    model.name=mistralai/Mistral-7B-Instruct-v0.1 \\")
+    print(f"    model.tensor_parallel_size=2 \\")
+    print(f"    model.gpu_memory_utilization=0.8 \\")
+    print(f"    inference.batch_size=64")
     
     # Clean up
     import atexit

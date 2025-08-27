@@ -61,28 +61,37 @@ Run evaluation with default settings:
 python -m locallighteval.main data.input_path=/path/to/your/data.json
 ```
 
-### 3. Using Custom Models
+### 3. Using Different Models
 
-Evaluate with a specific model:
+Use any HuggingFace model:
 ```bash
-python -m locallighteval.main data.input_path=/path/to/your/data.json model=llama2_7b
+python -m locallighteval.main data.input_path=/path/to/your/data.json model.name=meta-llama/Llama-2-7b-chat-hf
+python -m locallighteval.main data.input_path=/path/to/your/data.json model.name=mistralai/Mistral-7B-Instruct-v0.1
+```
+
+Use a local model:
+```bash
+python -m locallighteval.main data.input_path=/path/to/your/data.json model.name=/path/to/local/model
 ```
 
 ### 4. Configuration Examples
 
-With custom batch size and temperature:
+With custom model parameters:
 ```bash
 python -m locallighteval.main \
     data.input_path=/path/to/your/data.json \
+    model.name=meta-llama/Llama-2-7b-chat-hf \
+    model.tensor_parallel_size=2 \
+    model.gpu_memory_utilization=0.8 \
     inference.batch_size=64 \
-    inference.temperature=0.1 \
-    model.tensor_parallel_size=2
+    inference.temperature=0.1
 ```
 
 With few-shot prompting:
 ```bash
 python -m locallighteval.main \
     data.input_path=/path/to/your/data.json \
+    model.name=mistralai/Mistral-7B-Instruct-v0.1 \
     inference=few_shot
 ```
 
@@ -93,10 +102,7 @@ LocalLightEval uses Hydra for powerful, flexible configuration management. Confi
 ### Configuration Structure
 ```
 config/
-├── config.yaml              # Main config
-├── model/
-│   ├── default.yaml         # Default model config  
-│   └── llama2_7b.yaml       # Llama 2 7B config
+├── config.yaml              # Main config with model settings
 ├── inference/
 │   ├── default.yaml         # Default inference params
 │   └── few_shot.yaml        # Few-shot prompting
@@ -106,18 +112,33 @@ config/
     └── default.yaml         # Output management
 ```
 
-### Creating Custom Configs
+### Model Configuration
 
-Create a new model configuration:
+Models are configured directly in the main config or via command line. The default config includes:
+
 ```yaml
-# config/model/my_model.yaml
-# @package model
-name: "my-org/my-model"
-trust_remote_code: false
-tensor_parallel_size: 1
-dtype: "bfloat16"
-max_model_len: 8192
-gpu_memory_utilization: 0.9
+model:
+  name: "microsoft/DialoGPT-medium"  # Any HF repo or local path
+  trust_remote_code: false
+  tensor_parallel_size: 1
+  dtype: "auto"
+  max_model_len: null
+  gpu_memory_utilization: 0.9
+```
+
+You can specify any model via command line:
+```bash
+# HuggingFace models
+python -m locallighteval.main model.name=meta-llama/Llama-2-7b-chat-hf
+
+# Local models  
+python -m locallighteval.main model.name=/path/to/your/model
+
+# With additional parameters
+python -m locallighteval.main \
+    model.name=mistralai/Mistral-7B-Instruct-v0.1 \
+    model.trust_remote_code=true \
+    model.tensor_parallel_size=2
 ```
 
 Create custom inference settings:
@@ -150,12 +171,30 @@ outputs/
 
 ## Available Models
 
-The system works with any vLLM-compatible model. Pre-configured options include:
+The system works with **any vLLM-compatible model**, including:
 
-- `default`: Microsoft DialoGPT-medium (lightweight, good for testing)
-- `llama2_7b`: Meta Llama 2 7B Chat model
+### HuggingFace Models
+- **Llama 2**: `meta-llama/Llama-2-7b-chat-hf`, `meta-llama/Llama-2-13b-chat-hf`
+- **Mistral**: `mistralai/Mistral-7B-Instruct-v0.1`, `mistralai/Mixtral-8x7B-Instruct-v0.1`
+- **Code Llama**: `codellama/CodeLlama-7b-Instruct-hf`
+- **Vicuna**: `lmsys/vicuna-7b-v1.5`, `lmsys/vicuna-13b-v1.5`
+- **And thousands more**: Any model on [HuggingFace Hub](https://huggingface.co/models)
 
-Add new models by creating configuration files in `config/model/`.
+### Local Models
+- Downloaded HF models: `/path/to/downloaded/model`
+- Custom fine-tuned models: `/path/to/your/custom/model`
+- Converted models in HF format
+
+### Usage Examples
+```bash
+# Popular open models
+python -m locallighteval.main model.name=meta-llama/Llama-2-7b-chat-hf
+python -m locallighteval.main model.name=mistralai/Mistral-7B-Instruct-v0.1
+python -m locallighteval.main model.name=microsoft/DialoGPT-large
+
+# Local models
+python -m locallighteval.main model.name=/home/user/models/my-fine-tuned-llama
+```
 
 ## Performance Optimization
 

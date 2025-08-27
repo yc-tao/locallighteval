@@ -1,7 +1,0 @@
-# @package model
-name: "microsoft/DialoGPT-medium"
-trust_remote_code: false
-tensor_parallel_size: 1
-dtype: "auto"
-max_model_len: 2048
-gpu_memory_utilization: 0.9

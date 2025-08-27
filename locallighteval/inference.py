@@ -1,6 +1,8 @@
 """Inference engine using vLLM backend."""
 
+import os
 import torch
+from pathlib import Path
 from typing import List, Optional, Dict, Any
 from vllm import LLM, SamplingParams
 from loguru import logger
@@ -21,24 +23,76 @@ class VLLMInferenceEngine:
         self._initialize_model()
         self._setup_sampling_params()
     
+    def _validate_model_path(self) -> None:
+        """Validate model path before loading."""
+        model_path = self.model_config.name
+        
+        # Check if it's a local path
+        if os.path.exists(model_path):
+            path_obj = Path(model_path)
+            if path_obj.is_dir():
+                # Check for required model files in local directory
+                required_files = ['config.json']
+                missing_files = [f for f in required_files if not (path_obj / f).exists()]
+                if missing_files:
+                    logger.warning(f"Local model directory missing files: {missing_files}")
+                    logger.info("Proceeding with load attempt - vLLM may handle missing files")
+                logger.info(f"Using local model directory: {model_path}")
+            else:
+                raise ValueError(f"Model path is not a directory: {model_path}")
+        else:
+            # Assume it's a HuggingFace repo name
+            logger.info(f"Using HuggingFace model repository: {model_path}")
+            
+            # Basic validation of HF repo name format
+            if not model_path or '/' not in model_path:
+                logger.warning(f"Model name '{model_path}' doesn't follow typical HF format (org/model)")
+                logger.info("Proceeding with load attempt - may be a valid model name")
+
     def _initialize_model(self) -> None:
         """Initialize the vLLM model."""
         logger.info(f"Initializing vLLM model: {self.model_config.name}")
         
+        # Validate model path/name
+        self._validate_model_path()
+        
         try:
-            self.llm = LLM(
-                model=self.model_config.name,
-                trust_remote_code=self.model_config.trust_remote_code,
-                tensor_parallel_size=self.model_config.tensor_parallel_size,
-                dtype=self.model_config.dtype,
-                max_model_len=self.model_config.max_model_len,
-                gpu_memory_utilization=self.model_config.gpu_memory_utilization,
-            )
+            # Build vLLM arguments
+            vllm_args = {
+                "model": self.model_config.name,
+                "trust_remote_code": self.model_config.trust_remote_code,
+                "tensor_parallel_size": self.model_config.tensor_parallel_size,
+                "dtype": self.model_config.dtype,
+                "gpu_memory_utilization": self.model_config.gpu_memory_utilization,
+            }
+            
+            # Only add max_model_len if specified
+            if self.model_config.max_model_len is not None:
+                vllm_args["max_model_len"] = self.model_config.max_model_len
+            
+            logger.debug(f"vLLM initialization arguments: {vllm_args}")
+            
+            self.llm = LLM(**vllm_args)
             
             logger.info("Model initialized successfully")
             
         except Exception as e:
-            logger.error(f"Failed to initialize model: {e}")
+            logger.error(f"Failed to initialize model '{self.model_config.name}': {e}")
+            
+            # Provide helpful error messages
+            if "not found" in str(e).lower():
+                logger.error("Model not found. Please check:")
+                logger.error("1. For HuggingFace models: Verify the model name exists on https://huggingface.co")
+                logger.error("2. For local models: Ensure the path exists and contains model files")
+                logger.error("3. Check your internet connection for downloading HF models")
+            elif "memory" in str(e).lower():
+                logger.error("Out of memory. Try:")
+                logger.error("1. Reducing gpu_memory_utilization (current: {:.1f})".format(self.model_config.gpu_memory_utilization))
+                logger.error("2. Using a smaller model")
+                logger.error("3. Reducing max_model_len if set")
+            elif "trust_remote_code" in str(e).lower():
+                logger.error("Model requires trust_remote_code=true. Set this in your config if you trust the model code.")
+            
             raise
     
     def _setup_sampling_params(self) -> None:

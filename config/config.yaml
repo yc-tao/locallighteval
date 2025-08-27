@@ -1,7 +1,6 @@
 # Default configuration for LocalLightEval
 defaults:
   - _self_
-  - model: default
   - inference: default
   - data: default
   - output: default
@@ -13,6 +12,15 @@ hydra:
   sweep:
     dir: multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
     subdir: ${hydra:job.num}
+
+# Model configuration - specify any HuggingFace model or local path
+model:
+  name: "microsoft/DialoGPT-medium"  # HF repo name or local path
+  trust_remote_code: false
+  tensor_parallel_size: 1
+  dtype: "auto"
+  max_model_len: null
+  gpu_memory_utilization: 0.9
 
 # Global settings
 experiment_name: null
