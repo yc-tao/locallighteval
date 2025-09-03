@@ -23,6 +23,7 @@ model:
   dtype: "auto"
   max_model_len: null
   gpu_memory_utilization: 0.9
+  visible_devices: null  # e.g., "0,1" or "2" - leave null to use all available GPUs
 
 # Global settings
 experiment_name: null

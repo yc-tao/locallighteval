@@ -16,6 +16,7 @@ class ModelConfig:
     dtype: str = "auto"
     max_model_len: Optional[int] = None
     gpu_memory_utilization: float = 0.9
+    visible_devices: Optional[str] = None  # e.g., "0,1" or "2"
 
 
 @dataclass  

@@ -79,6 +79,7 @@ def print_config_summary(cfg, output_dir: Path = None) -> None:
     table.add_row("", "Tensor Parallel", str(cfg.model.tensor_parallel_size))
     table.add_row("", "GPU Memory Util", f"{cfg.model.gpu_memory_utilization:.1%}")
     table.add_row("", "Max Model Length", str(cfg.model.max_model_len or "Auto"))
+    table.add_row("", "Visible Devices", str(cfg.model.visible_devices or "All available"))
     
     # Inference configuration
     table.add_row("Inference", "Max Tokens", str(cfg.inference.max_tokens))

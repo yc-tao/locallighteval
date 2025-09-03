@@ -56,6 +56,12 @@ class VLLMInferenceEngine:
         # Validate model path/name
         self._validate_model_path()
         
+        # Set GPU visibility if specified
+        if self.model_config.visible_devices is not None:
+            import os
+            os.environ["CUDA_VISIBLE_DEVICES"] = str(self.model_config.visible_devices)
+            logger.info(f"Set CUDA_VISIBLE_DEVICES to: {self.model_config.visible_devices}")
+        
         try:
             # Build vLLM arguments
             vllm_args = {
