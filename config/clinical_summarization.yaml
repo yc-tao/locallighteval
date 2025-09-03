@@ -14,19 +14,13 @@ data:
   input_path: "/ssd-shared/report-distillation.json"
   max_samples: 100  # Limit for testing
 
-# Model optimized for summarization
+# Model optimized for summarization (base model for now - LoRA merging needed for fine-tuned version)
 model:
-  name: "meta-llama/Llama-2-7b-chat-hf"
-  max_model_len: 4096
-  gpu_memory_utilization: 0.85
-  visible_devices: "0"
+  name: "Qwen/Qwen3-4B-Instruct-2507"  # Base model that the LoRA was trained on
+  gpu_memory_utilization: 0.95
+  visible_devices: "7"
+  # TODO: Merge LoRA adapter from /ssd-shared/ryans_output/random_text_no_lower_limit/checkpoint-1600
 
-# Inference settings for summarization
-inference:
-  max_tokens: 1024
-  temperature: 0.1
-  top_p: 0.95
-  batch_size: 8
 
 # Summarization-specific settings
 summarization:
