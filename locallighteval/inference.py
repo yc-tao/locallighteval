@@ -63,13 +63,6 @@ class VLLMInferenceEngine:
             os.environ["CUDA_VISIBLE_DEVICES"] = str(self.model_config.visible_devices)
             logger.info(f"Set CUDA_VISIBLE_DEVICES to: {self.model_config.visible_devices}")
         
-        # Suppress vLLM verbose logging during model initialization
-        os.environ["VLLM_LOGGING_LEVEL"] = "WARNING"
-        
-        # Configure Python logging for vLLM components (helps with main process)
-        vllm_loggers = ['vllm', 'torch', 'transformers']
-        for logger_name in vllm_loggers:
-            logging.getLogger(logger_name).setLevel(logging.WARNING)
         
         try:
             # Build vLLM arguments
