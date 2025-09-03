@@ -97,6 +97,13 @@ def print_config_summary(cfg, output_dir: Path = None) -> None:
     table.add_row("", "Save Predictions", "✓" if cfg.output.save_predictions else "✗")
     table.add_row("", "Save Metrics", "✓" if cfg.output.save_metrics else "✗")
     
+    # Mode and workflow
+    mode = cfg.get('mode', 'evaluation')
+    table.add_row("Workflow", "Mode", mode.title())
+    if mode in ['summarization', 'end_to_end'] and 'summarization' in cfg:
+        table.add_row("", "Summary Suffix", cfg.summarization.get('output_suffix', '_summaries'))
+        table.add_row("", "Save Original", "✓" if cfg.summarization.get('save_original_text', True) else "✗")
+    
     console.print(table)
 
 

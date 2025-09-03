@@ -4,6 +4,7 @@ defaults:
   - inference: default
   - data: default
   - output: default
+  - mode: null
 
 # Hydra configuration
 hydra:
@@ -30,3 +31,10 @@ experiment_name: null
 seed: 42
 debug: false
 dry_run: false
+mode: evaluation  # Options: evaluation, summarization, end_to_end
+
+# Summarization settings (used when mode=summarization or mode=end_to_end)
+summarization:
+  output_suffix: "_summaries"
+  extract_patterns: true
+  save_original_text: true

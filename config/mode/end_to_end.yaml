@@ -1,0 +1,21 @@
+# @package _global_
+# Configuration for end-to-end mode (summarization + evaluation)
+
+# Override defaults for end-to-end processing
+defaults:
+  - override /inference: default
+
+# Mode setting
+mode: end_to_end
+
+# Summarization-specific settings (same as summarization mode)
+summarization:
+  output_suffix: "_summaries"
+  extract_patterns: true
+  save_original_text: true
+  
+# Inference settings optimized for both summarization and evaluation
+inference:
+  max_tokens: 1024  # Higher for summarization
+  temperature: 0.1  # Lower for consistent summaries
+  instruction: "Classify the following text as positive (1) or negative (0). Respond with only the number."  # Used for evaluation phase

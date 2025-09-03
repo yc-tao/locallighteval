@@ -56,6 +56,27 @@ if __name__ == "__main__":
     print(f"    model.gpu_memory_utilization=0.8 \\")
     print(f"    inference.batch_size=64")
     
+    print("\n" + "="*70)
+    print("NEW FEATURES: Summarization and End-to-End Workflows")
+    print("="*70)
+    
+    print("\nGenerate summaries only (summarization mode):")
+    print(f"python -m locallighteval.main data.input_path={sample_file} mode=summarization")
+    
+    print("\nGenerate summaries then evaluate them (end-to-end mode):")
+    print(f"python -m locallighteval.main data.input_path={sample_file} mode=end_to_end")
+    
+    print("\nCustomize summarization output:")
+    print(f"python -m locallighteval.main data.input_path={sample_file} \\")
+    print(f"    mode=summarization \\")
+    print(f"    summarization.output_suffix=_clinical_summaries")
+    
+    print("\nWith specific GPU and model for summarization:")
+    print(f"python -m locallighteval.main data.input_path={sample_file} \\")
+    print(f"    mode=end_to_end \\")
+    print(f"    model.name=meta-llama/Llama-2-7b-chat-hf \\")
+    print(f"    model.visible_devices=0")
+    
     # Clean up
     import atexit
     import os

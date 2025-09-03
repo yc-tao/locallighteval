@@ -1,0 +1,21 @@
+# @package _global_
+# Configuration for summarization mode
+
+# Override defaults for summarization
+defaults:
+  - override /inference: default
+
+# Mode setting
+mode: summarization
+
+# Summarization-specific settings
+summarization:
+  output_suffix: "_summaries"
+  extract_patterns: true
+  save_original_text: true
+  
+# Inference settings optimized for summarization
+inference:
+  max_tokens: 1024
+  temperature: 0.1  # Lower temperature for more consistent summaries
+  instruction: null  # Not used in summarization mode

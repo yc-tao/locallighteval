@@ -14,6 +14,7 @@ from .config import validate_config
 from .data_loader import load_dataset
 from .inference import VLLMInferenceEngine, BinaryClassificationInference
 from .metrics import BinaryClassificationMetrics
+from .summarization import ClinicalSummarizationEngine
 from .utils import (
     setup_rich_logging, print_banner, print_config_summary, 
     create_progress_bar, print_gpu_info, save_run_metadata,
@@ -21,6 +22,61 @@ from .utils import (
 )
 
 console = Console()
+
+
+def run_summarization_pipeline(cfg: DictConfig, dataset, inference_engine: VLLMInferenceEngine, 
+                              output_dir: Path, start_time: datetime) -> Path:
+    """Run the summarization pipeline.
+    
+    Args:
+        cfg: Configuration
+        dataset: Input dataset
+        inference_engine: vLLM inference engine
+        output_dir: Output directory
+        start_time: Start time of the run
+        
+    Returns:
+        Path to the generated summaries file
+    """
+    logger.info("Starting summarization pipeline...")
+    
+    # Initialize summarization engine
+    summarizer = ClinicalSummarizationEngine(inference_engine)
+    
+    # Convert dataset to list format for processing
+    data_list = []
+    for batch in dataset.get_batches(len(dataset.data)):  # Get all data in one batch
+        data_list.extend(batch)
+    
+    # Process with progress tracking
+    with create_progress_bar() as progress:
+        task_id = progress.add_task("Generating summaries...", total=len(data_list))
+        
+        processed_data = summarizer.process_dataset(
+            data_list, 
+            progress=progress, 
+            task_id=task_id
+        )
+    
+    # Generate output filename
+    input_path = Path(cfg.data.input_path)
+    suffix = cfg.summarization.get('output_suffix', '_summaries')
+    output_filename = f"{input_path.stem}{suffix}.json"
+    output_file = output_dir / output_filename
+    
+    # Save summaries
+    summarizer.save_summaries(processed_data, output_file)
+    
+    # Log completion
+    end_time = datetime.now()
+    duration = (end_time - start_time).total_seconds()
+    
+    console.print(f"\n[bold green]Summarization completed![/bold green]")
+    console.print(f"[bold]Duration:[/bold] {duration:.2f} seconds")
+    console.print(f"[bold]Summaries generated:[/bold] {len(processed_data)}")
+    console.print(f"[bold]Output file:[/bold] {output_file}")
+    
+    return output_file
 
 
 @hydra.main(version_base=None, config_path="../config", config_name="config")
@@ -90,6 +146,30 @@ def main(cfg: DictConfig) -> None:
             model_config=cfg.model,
             inference_config=cfg.inference
         )
+        
+        # Handle different modes
+        mode = cfg.get('mode', 'evaluation')
+        logger.info(f"Running in {mode} mode")
+        
+        if mode == 'summarization':
+            # Run summarization only
+            run_summarization_pipeline(cfg, dataset, inference_engine, output_dir, start_time)
+            return
+        elif mode == 'end_to_end':
+            # Run summarization then evaluation
+            summaries_file = run_summarization_pipeline(cfg, dataset, inference_engine, output_dir, start_time)
+            # Load the summarized data for evaluation
+            logger.info("Loading generated summaries for evaluation...")
+            summary_dataset = load_dataset(
+                data_path=str(summaries_file),
+                text_key="text",
+                label_key="label",
+                max_samples=cfg.data.max_samples
+            )
+            dataset = summary_dataset
+            total_samples = len(dataset)
+            logger.info(f"Summary dataset loaded: {total_samples} samples")
+        # If mode == 'evaluation', continue with normal evaluation flow
         
         # Initialize binary classification inference
         binary_classifier = BinaryClassificationInference(inference_engine)
