@@ -36,8 +36,10 @@ def main(cfg: DictConfig) -> None:
         logger.info("Validating configuration...")
         validate_config(cfg)
         
-        # Use Hydra's working directory as output directory
-        output_dir = Path.cwd()
+        # Get Hydra's output directory from the runtime config
+        from hydra.core.hydra_config import HydraConfig
+        hydra_cfg = HydraConfig.get()
+        output_dir = Path(hydra_cfg.runtime.output_dir)
         logger.info(f"Output directory: {output_dir}")
         
         # Setup logging
@@ -45,7 +47,7 @@ def main(cfg: DictConfig) -> None:
         setup_rich_logging(output_dir, log_level=log_level)
         
         # Print configuration summary
-        print_config_summary(cfg)
+        print_config_summary(cfg, output_dir)
         
         # Print GPU information
         print_gpu_info()

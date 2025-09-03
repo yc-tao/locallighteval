@@ -67,7 +67,7 @@ def print_banner() -> None:
     console.print(panel)
 
 
-def print_config_summary(cfg) -> None:
+def print_config_summary(cfg, output_dir: Path = None) -> None:
     """Print a formatted summary of the configuration."""
     table = Table(title="Configuration Summary", show_header=True, header_style="bold magenta")
     table.add_column("Category", style="bold cyan", width=15)
@@ -92,7 +92,7 @@ def print_config_summary(cfg) -> None:
     table.add_row("", "Max Samples", str(cfg.data.max_samples or "All"))
     
     # Output configuration
-    table.add_row("Output", "Output Directory", str(Path.cwd()))
+    table.add_row("Output", "Output Directory", str(output_dir or Path.cwd()))
     table.add_row("", "Save Predictions", "✓" if cfg.output.save_predictions else "✗")
     table.add_row("", "Save Metrics", "✓" if cfg.output.save_metrics else "✗")
     
