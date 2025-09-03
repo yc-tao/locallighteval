@@ -22,7 +22,7 @@ def merge_lora_adapter(base_model: str, lora_path: str, output_path: str):
         print(f"Loading LoRA model from {lora_path}...")
         print(f"Base model: {base_model}")
         
-        # Load the PEFT model (this loads base + adapter)
+        # Load the PEFT model directly (it will load the base model automatically)
         model = AutoPeftModelForCausalLM.from_pretrained(
             lora_path,
             torch_dtype=torch.float16,

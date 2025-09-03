@@ -49,7 +49,7 @@ def run_summarization_pipeline(cfg: DictConfig, dataset, inference_engine: VLLMI
     
     # Convert dataset to list format for processing
     data_list = []
-    for batch in dataset.get_batches(len(dataset.data)):  # Get all data in one batch
+    for batch in dataset.get_batches(len(dataset)):  # Get all data in one batch
         data_list.extend(batch)
     
     # Process with progress tracking
