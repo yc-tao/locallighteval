@@ -103,77 +103,24 @@ class VLLMInferenceEngine:
     
     def _setup_sampling_params(self) -> None:
         """Setup sampling parameters for inference."""
+        # Calculate max prompt tokens if truncation is enabled
+        truncate_prompt_tokens = None
+        if self.inference_config.truncate_input:
+            model_max = self.model_config.max_model_len or 2048  # Default fallback
+            output_tokens = self.inference_config.max_tokens
+            buffer = 50  # Safety buffer for special tokens
+            truncate_prompt_tokens = model_max - output_tokens - buffer
+        
         self.sampling_params = SamplingParams(
             max_tokens=self.inference_config.max_tokens,
             temperature=self.inference_config.temperature,
             top_p=self.inference_config.top_p,
             top_k=self.inference_config.top_k,
+            truncate_prompt_tokens=truncate_prompt_tokens,
         )
         
         logger.info(f"Sampling parameters: {self.sampling_params}")
     
-    def _get_tokenizer(self):
-        """Get the tokenizer from vLLM model."""
-        if self.llm and hasattr(self.llm, 'get_tokenizer'):
-            return self.llm.get_tokenizer()
-        elif self.llm and hasattr(self.llm.llm_engine.model_executor, 'driver_worker'):
-            return self.llm.llm_engine.model_executor.driver_worker.model_runner.model.get_tokenizer()
-        else:
-            # Fallback: create tokenizer directly
-            from transformers import AutoTokenizer
-            return AutoTokenizer.from_pretrained(self.model_config.name)
-    
-    def truncate_text_to_tokens(self, text: str, max_tokens: Optional[int] = None) -> str:
-        """Truncate text to fit within token limits.
-        
-        Args:
-            text: Input text to truncate
-            max_tokens: Maximum tokens allowed (defaults to model's max_model_len - output tokens)
-            
-        Returns:
-            Truncated text that fits within token limits
-        """
-        if max_tokens is None:
-            # Calculate available tokens for input (model max - output tokens - buffer)
-            model_max = self.model_config.max_model_len or 2048  # Default fallback
-            output_tokens = self.inference_config.max_tokens
-            buffer = 50  # Safety buffer for special tokens
-            max_tokens = model_max - output_tokens - buffer
-        
-        if self.inference_config.truncation_strategy == "characters":
-            # Simple character-based truncation (rough estimate: 4 chars per token)
-            estimated_chars = max_tokens * 4
-            if len(text) > estimated_chars:
-                truncated_text = text[:estimated_chars]
-                logger.info(f"Character-based truncation: {len(text)} -> {len(truncated_text)} chars")
-                return truncated_text
-            return text
-        
-        try:
-            tokenizer = self._get_tokenizer()
-            
-            # Tokenize the text
-            tokens = tokenizer.encode(text, add_special_tokens=False)
-            
-            if len(tokens) <= max_tokens:
-                return text  # No truncation needed
-            
-            # Truncate tokens and decode back to text
-            truncated_tokens = tokens[:max_tokens]
-            truncated_text = tokenizer.decode(truncated_tokens, skip_special_tokens=True)
-            
-            logger.info(f"Truncated text from {len(tokens)} to {len(truncated_tokens)} tokens")
-            return truncated_text
-            
-        except Exception as e:
-            logger.warning(f"Failed to tokenize for truncation: {e}. Using character-based truncation.")
-            # Fallback: simple character-based truncation (rough estimate: 4 chars per token)
-            estimated_chars = max_tokens * 4
-            if len(text) > estimated_chars:
-                truncated_text = text[:estimated_chars]
-                logger.info(f"Character-based truncation: {len(text)} -> {len(truncated_text)} chars")
-                return truncated_text
-            return text
 
     def cleanup(self) -> None:
         """Clean up model resources and free GPU memory."""
@@ -199,27 +146,27 @@ class VLLMInferenceEngine:
         
         logger.debug(f"Generating responses for {len(prompts)} prompts")
         
-        # Truncate prompts if enabled and they exceed token limits
-        truncated_prompts = []
-        for prompt in prompts:
-            if self.inference_config.truncate_input:
-                truncated_prompt = self.truncate_text_to_tokens(prompt)
-                truncated_prompts.append(truncated_prompt)
-            else:
-                truncated_prompts.append(prompt)
-        
         try:
             # Override sampling params if provided
             sampling_params = self.sampling_params
             if kwargs:
+                # Calculate truncate_prompt_tokens for kwargs
+                truncate_prompt_tokens = None
+                if self.inference_config.truncate_input:
+                    model_max = self.model_config.max_model_len or 2048
+                    output_tokens = kwargs.get('max_tokens', self.inference_config.max_tokens)
+                    buffer = 50
+                    truncate_prompt_tokens = model_max - output_tokens - buffer
+                
                 sampling_params = SamplingParams(
                     max_tokens=kwargs.get('max_tokens', self.inference_config.max_tokens),
                     temperature=kwargs.get('temperature', self.inference_config.temperature),
                     top_p=kwargs.get('top_p', self.inference_config.top_p),
                     top_k=kwargs.get('top_k', self.inference_config.top_k),
+                    truncate_prompt_tokens=truncate_prompt_tokens,
                 )
             
-            outputs = self.llm.generate(truncated_prompts, sampling_params)
+            outputs = self.llm.generate(prompts, sampling_params)
             
             responses = []
             for output in outputs:
@@ -239,38 +186,42 @@ class VLLMInferenceEngine:
         
         logger.debug(f"Generating responses with metadata for {len(prompts)} prompts")
         
-        # Truncate prompts if enabled and they exceed token limits
-        truncated_prompts = []
-        for prompt in prompts:
-            if self.inference_config.truncate_input:
-                truncated_prompt = self.truncate_text_to_tokens(prompt)
-                truncated_prompts.append(truncated_prompt)
-            else:
-                truncated_prompts.append(prompt)
-        
         try:
             sampling_params = self.sampling_params
             if kwargs:
+                # Calculate truncate_prompt_tokens for kwargs
+                truncate_prompt_tokens = None
+                if self.inference_config.truncate_input:
+                    model_max = self.model_config.max_model_len or 2048
+                    output_tokens = kwargs.get('max_tokens', self.inference_config.max_tokens)
+                    buffer = 50
+                    truncate_prompt_tokens = model_max - output_tokens - buffer
+                
                 sampling_params = SamplingParams(
                     max_tokens=kwargs.get('max_tokens', self.inference_config.max_tokens),
                     temperature=kwargs.get('temperature', self.inference_config.temperature),
                     top_p=kwargs.get('top_p', self.inference_config.top_p),
                     top_k=kwargs.get('top_k', self.inference_config.top_k),
+                    truncate_prompt_tokens=truncate_prompt_tokens,
                 )
             
-            outputs = self.llm.generate(truncated_prompts, sampling_params)
+            outputs = self.llm.generate(prompts, sampling_params)
             
             results = []
             for i, output in enumerate(outputs):
+                # Check if truncation occurred by comparing token counts
+                expected_tokens = len(output.prompt_token_ids)
+                max_prompt_tokens = sampling_params.truncate_prompt_tokens
+                prompt_truncated = max_prompt_tokens is not None and expected_tokens >= max_prompt_tokens
+                
                 result = {
-                    "prompt": truncated_prompts[i],  # Use truncated prompt that was actually sent
-                    "original_prompt": prompts[i],   # Keep original for reference
-                    "prompt_truncated": prompts[i] != truncated_prompts[i],  # Flag if truncation occurred
+                    "prompt": prompts[i],  # Original prompt
                     "generated_text": output.outputs[0].text,
                     "prompt_tokens": len(output.prompt_token_ids),
                     "completion_tokens": len(output.outputs[0].token_ids),
                     "total_tokens": len(output.prompt_token_ids) + len(output.outputs[0].token_ids),
                     "finish_reason": output.outputs[0].finish_reason,
+                    "prompt_truncated": prompt_truncated,  # Flag if truncation likely occurred
                 }
                 results.append(result)
             
