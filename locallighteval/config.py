@@ -28,6 +28,8 @@ class InferenceConfig:
     top_k: int = -1
     batch_size: int = 32
     instruction: str = "Classify the following text as positive (1) or negative (0). Respond with only the number."
+    truncate_input: bool = True  # Whether to truncate input text that exceeds token limits
+    truncation_strategy: str = "tokenizer"  # "tokenizer" or "characters"
 
 
 @dataclass

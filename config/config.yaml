@@ -9,9 +9,9 @@ defaults:
 # Hydra configuration
 hydra:
   run:
-    dir: outputs/eval/${now:%Y-%m-%d_%H-%M-%S}
+    dir: outputs/${oc.select:experiment_name,eval}/${now:%Y-%m-%d_%H-%M-%S}
   sweep:
-    dir: multirun/eval/${now:%Y-%m-%d_%H-%M-%S}
+    dir: multirun/${oc.select:experiment_name,eval}/${now:%Y-%m-%d_%H-%M-%S}
     subdir: ${hydra:job.num}
   job:
     chdir: false

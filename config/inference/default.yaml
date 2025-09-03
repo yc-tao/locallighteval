@@ -5,3 +5,5 @@ top_p: 1.0
 top_k: -1
 batch_size: 32
 instruction: "Classify the following text as positive (1) or negative (0). Respond with only the number."
+truncate_input: true  # Whether to truncate input text that exceeds token limits
+truncation_strategy: "tokenizer"  # "tokenizer" or "characters"
