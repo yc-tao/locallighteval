@@ -1,0 +1,34 @@
+# Quick test configuration for development
+# Usage: python -m locallighteval.main --config-name=quick_test
+
+defaults:
+  - config  # Inherit from base config.yaml
+  - _self_
+
+# Override base settings for quick testing
+experiment_name: "quick_test"
+mode: end_to_end
+debug: true
+dry_run: false  # Set to true for config-only validation
+
+# Small dataset for quick testing
+data:
+  input_path: "/tmp/test_data.json"  # Override with actual file
+  max_samples: 5  # Very small for quick testing
+
+# Lightweight model for fast testing
+model:
+  name: "microsoft/DialoGPT-medium"
+  gpu_memory_utilization: 0.7
+  visible_devices: "0"
+
+# Fast inference settings
+inference:
+  max_tokens: 512
+  temperature: 0.1
+  batch_size: 2
+
+# Test summarization settings
+summarization:
+  output_suffix: "_test_summaries"
+  save_original_text: true

@@ -91,6 +91,32 @@ if __name__ == "__main__":
     print(f"    'dual_model.summarization_model.visible_devices=\"0,1\"' \\")
     print(f"    dual_model.evaluation_model.visible_devices=2")
     
+    print("\n" + "="*70)
+    print("PRE-CONFIGURED WORKFLOWS: Just specify the config name!")
+    print("="*70)
+    
+    print("\nUse pre-configured workflows (much cleaner than CLI overrides):")
+    print("python -m locallighteval.main --config-name=clinical_summarization")
+    print("python -m locallighteval.main --config-name=dual_model_pipeline") 
+    print("python -m locallighteval.main --config-name=standard_eval")
+    print("python -m locallighteval.main --config-name=quick_test")
+    
+    print("\nStill easy to override specific values:")
+    print("python -m locallighteval.main --config-name=quick_test \\")
+    print(f"    data.input_path={sample_file} \\")
+    print("    data.max_samples=3")
+    
+    print("\nDry run with any config:")
+    print("python -m locallighteval.main --config-name=dual_model_pipeline \\")
+    print("    dry_run=true \\")
+    print("    data.max_samples=10")
+    
+    print("\nThe configs are much cleaner to read and modify!")
+    print("Check out: config/clinical_summarization.yaml")
+    print("           config/dual_model_pipeline.yaml")
+    print("           config/quick_test.yaml")
+    print("           config/standard_eval.yaml")
+    
     # Clean up
     import atexit
     import os

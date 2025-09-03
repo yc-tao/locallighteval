@@ -1,0 +1,27 @@
+# Standard evaluation configuration  
+# Usage: python -m locallighteval.main --config-name=standard_eval
+
+defaults:
+  - config  # Inherit from base config.yaml
+  - _self_
+
+# Override base settings for standard evaluation
+experiment_name: "standard_evaluation"
+mode: evaluation  # Evaluation only, no summarization
+
+# Full dataset
+data:
+  input_path: "/ssd-shared/report-distillation.json"
+  max_samples: null  # Use all data
+
+# Standard model settings
+model:
+  name: "microsoft/DialoGPT-medium"
+  gpu_memory_utilization: 0.9
+
+# Standard inference for classification
+inference:
+  max_tokens: 512
+  temperature: 0.0  # Deterministic
+  batch_size: 32
+  instruction: "Classify the following text as positive (1) or negative (0). Respond with only the number."

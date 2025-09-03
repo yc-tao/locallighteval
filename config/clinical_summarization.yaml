@@ -1,0 +1,34 @@
+# Clinical summarization configuration
+# Usage: python -m locallighteval.main --config-name=clinical_summarization
+
+defaults:
+  - config  # Inherit from base config.yaml
+  - _self_
+
+# Override base settings for clinical summarization
+experiment_name: "clinical_summarization"
+mode: summarization
+
+# Data settings - update the path as needed
+data:
+  input_path: "/ssd-shared/report-distillation.json"
+  max_samples: 100  # Limit for testing
+
+# Model optimized for summarization
+model:
+  name: "meta-llama/Llama-2-7b-chat-hf"
+  max_model_len: 4096
+  gpu_memory_utilization: 0.85
+  visible_devices: "0"
+
+# Inference settings for summarization
+inference:
+  max_tokens: 1024
+  temperature: 0.1
+  top_p: 0.95
+  batch_size: 8
+
+# Summarization-specific settings
+summarization:
+  output_suffix: "_clinical_summaries"
+  save_original_text: true

@@ -1,0 +1,39 @@
+# Dual model end-to-end pipeline configuration
+# Usage: python -m locallighteval.main --config-name=dual_model_pipeline
+
+defaults:
+  - config  # Inherit from base config.yaml
+  - _self_
+
+# Override base settings for dual model pipeline
+experiment_name: "dual_model_pipeline"
+mode: end_to_end
+
+# Data settings
+data:
+  input_path: "/ssd-shared/report-distillation.json"
+  max_samples: 50  # Smaller for testing dual model setup
+
+# Inference settings
+inference:
+  max_tokens: 1024
+  temperature: 0.0  # Deterministic for evaluation
+  batch_size: 16
+
+# Enable dual model setup
+dual_model:
+  use_different_models: true
+  summarization_model:
+    name: "meta-llama/Llama-2-7b-chat-hf"
+    max_model_len: 4096
+    gpu_memory_utilization: 0.8
+    visible_devices: "0,1"  # Use GPUs 0 and 1 for summarization
+  evaluation_model:
+    name: "microsoft/DialoGPT-medium"
+    gpu_memory_utilization: 0.9
+    visible_devices: "2"  # Use GPU 2 for evaluation
+
+# Summarization settings
+summarization:
+  output_suffix: "_summaries_for_eval"
+  save_original_text: true
