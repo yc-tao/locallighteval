@@ -41,28 +41,9 @@ class DataConfig:
 @dataclass
 class OutputConfig:
     """Configuration for output management."""
-    base_dir: str = "./outputs"
-    run_name: Optional[str] = None
     save_predictions: bool = True
     save_metrics: bool = True
     save_detailed_results: bool = True
-
-
-def create_output_dir(cfg: DictConfig) -> Path:
-    """Create and return the output directory for this run."""
-    if cfg.output.run_name:
-        run_id = f"{cfg.output.run_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    else:
-        run_id = f"eval_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
-    output_dir = Path(cfg.output.base_dir) / run_id
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Save config to output directory
-    config_path = output_dir / "config.yaml"
-    OmegaConf.save(cfg, config_path)
-    
-    return output_dir
 
 
 def validate_config(cfg: DictConfig) -> None:

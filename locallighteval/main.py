@@ -10,7 +10,7 @@ from omegaconf import DictConfig, OmegaConf
 from loguru import logger
 from rich.console import Console
 
-from .config import validate_config, create_output_dir
+from .config import validate_config
 from .data_loader import load_dataset
 from .inference import VLLMInferenceEngine, BinaryClassificationInference
 from .metrics import BinaryClassificationMetrics
@@ -36,9 +36,9 @@ def main(cfg: DictConfig) -> None:
         logger.info("Validating configuration...")
         validate_config(cfg)
         
-        # Create output directory
-        output_dir = create_output_dir(cfg)
-        logger.info(f"Output directory created: {output_dir}")
+        # Use Hydra's working directory as output directory
+        output_dir = Path.cwd()
+        logger.info(f"Output directory: {output_dir}")
         
         # Setup logging
         setup_rich_logging(output_dir, log_level="INFO")
