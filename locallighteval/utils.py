@@ -92,8 +92,7 @@ def print_config_summary(cfg) -> None:
     table.add_row("", "Max Samples", str(cfg.data.max_samples or "All"))
     
     # Output configuration
-    table.add_row("Output", "Base Directory", cfg.output.base_dir)
-    table.add_row("", "Run Name", cfg.output.run_name or "Auto-generated")
+    table.add_row("Output", "Output Directory", str(Path.cwd()))
     table.add_row("", "Save Predictions", "✓" if cfg.output.save_predictions else "✗")
     table.add_row("", "Save Metrics", "✓" if cfg.output.save_metrics else "✗")
     

@@ -41,7 +41,8 @@ def main(cfg: DictConfig) -> None:
         logger.info(f"Output directory: {output_dir}")
         
         # Setup logging
-        setup_rich_logging(output_dir, log_level="INFO")
+        log_level = "DEBUG" if cfg.debug else "INFO"
+        setup_rich_logging(output_dir, log_level=log_level)
         
         # Print configuration summary
         print_config_summary(cfg)
@@ -60,6 +61,14 @@ def main(cfg: DictConfig) -> None:
             sys.exit(1)
         
         logger.info("All dependencies validated successfully")
+        
+        # Check for dry run mode
+        if cfg.get('dry_run', False):
+            logger.info("Dry run mode - stopping after configuration validation")
+            console.print("[bold green]✓ Configuration validation successful![/bold green]")
+            console.print(f"[bold]Would use output directory:[/bold] {output_dir}")
+            console.print("[bold]Dry run completed successfully[/bold]")
+            return
         
         # Load dataset
         logger.info("Loading dataset...")

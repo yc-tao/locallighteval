@@ -8,12 +8,11 @@ defaults:
 # Hydra configuration
 hydra:
   run:
-    dir: outputs/${experiment_name:eval}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: outputs/eval/${now:%Y-%m-%d_%H-%M-%S}
   sweep:
-    dir: multirun/${experiment_name:eval}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: multirun/eval/${now:%Y-%m-%d_%H-%M-%S}
     subdir: ${hydra:job.num}
   job:
-    name: ${experiment_name:eval}
     chdir: false
 
 # Model configuration - specify any HuggingFace model or local path
@@ -29,3 +28,4 @@ model:
 experiment_name: null
 seed: 42
 debug: false
+dry_run: false
