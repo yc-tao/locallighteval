@@ -77,6 +77,20 @@ if __name__ == "__main__":
     print(f"    model.name=meta-llama/Llama-2-7b-chat-hf \\")
     print(f"    model.visible_devices=0")
     
+    print("\nDUAL MODEL SETUP: Use different models for summarization and evaluation:")
+    print(f"python -m locallighteval.main data.input_path={sample_file} \\")
+    print(f"    mode=end_to_end \\")
+    print(f"    dual_model.use_different_models=true \\")
+    print(f"    dual_model.summarization_model.name=meta-llama/Llama-2-7b-chat-hf \\")
+    print(f"    dual_model.evaluation_model.name=microsoft/DialoGPT-medium")
+    
+    print("\nWith GPU allocation for dual models:")
+    print(f"python -m locallighteval.main data.input_path={sample_file} \\")
+    print(f"    mode=end_to_end \\")
+    print(f"    dual_model.use_different_models=true \\")
+    print(f"    'dual_model.summarization_model.visible_devices=\"0,1\"' \\")
+    print(f"    dual_model.evaluation_model.visible_devices=2")
+    
     # Clean up
     import atexit
     import os

@@ -25,7 +25,8 @@ console = Console()
 
 
 def run_summarization_pipeline(cfg: DictConfig, dataset, inference_engine: VLLMInferenceEngine, 
-                              output_dir: Path, start_time: datetime) -> Path:
+                              output_dir: Path, start_time: datetime, 
+                              summarization_engine: VLLMInferenceEngine = None) -> Path:
     """Run the summarization pipeline.
     
     Args:
@@ -40,8 +41,11 @@ def run_summarization_pipeline(cfg: DictConfig, dataset, inference_engine: VLLMI
     """
     logger.info("Starting summarization pipeline...")
     
+    # Use the provided summarization engine or the default inference engine
+    engine_to_use = summarization_engine if summarization_engine is not None else inference_engine
+    
     # Initialize summarization engine
-    summarizer = ClinicalSummarizationEngine(inference_engine)
+    summarizer = ClinicalSummarizationEngine(engine_to_use)
     
     # Convert dataset to list format for processing
     data_list = []
@@ -156,8 +160,45 @@ def main(cfg: DictConfig) -> None:
             run_summarization_pipeline(cfg, dataset, inference_engine, output_dir, start_time)
             return
         elif mode == 'end_to_end':
-            # Run summarization then evaluation
-            summaries_file = run_summarization_pipeline(cfg, dataset, inference_engine, output_dir, start_time)
+            # Check if we need to use different models for summarization and evaluation
+            use_dual_models = cfg.get('dual_model', {}).get('use_different_models', False)
+            
+            if use_dual_models:
+                logger.info("Setting up dual model configuration for end-to-end processing...")
+                
+                # Initialize separate summarization engine
+                from omegaconf import OmegaConf
+                sum_model_config = OmegaConf.create(cfg.dual_model.summarization_model)
+                
+                summarization_engine = VLLMInferenceEngine(
+                    model_config=sum_model_config,
+                    inference_config=cfg.inference
+                )
+                
+                # Run summarization with the summarization model
+                summaries_file = run_summarization_pipeline(
+                    cfg, dataset, inference_engine, output_dir, start_time, 
+                    summarization_engine=summarization_engine
+                )
+                
+                # Clean up summarization model to free GPU memory
+                logger.info("Unloading summarization model to free GPU memory...")
+                summarization_engine.cleanup()
+                del summarization_engine
+                
+                # Initialize evaluation engine with different model
+                eval_model_config = OmegaConf.create(cfg.dual_model.evaluation_model)
+                logger.info(f"Initializing evaluation model: {eval_model_config.name}")
+                
+                inference_engine = VLLMInferenceEngine(
+                    model_config=eval_model_config,
+                    inference_config=cfg.inference
+                )
+                
+            else:
+                # Use the same model for both summarization and evaluation
+                summaries_file = run_summarization_pipeline(cfg, dataset, inference_engine, output_dir, start_time)
+            
             # Load the summarized data for evaluation
             logger.info("Loading generated summaries for evaluation...")
             summary_dataset = load_dataset(

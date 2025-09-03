@@ -112,6 +112,23 @@ class VLLMInferenceEngine:
         
         logger.info(f"Sampling parameters: {self.sampling_params}")
     
+    def cleanup(self) -> None:
+        """Clean up model resources and free GPU memory."""
+        if hasattr(self, 'llm') and self.llm is not None:
+            logger.info("Cleaning up vLLM model...")
+            del self.llm
+            self.llm = None
+            
+            # Force GPU memory cleanup
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                logger.info("GPU memory cache cleared")
+    
+    def __del__(self):
+        """Destructor to ensure cleanup on object deletion."""
+        self.cleanup()
+    
     def generate(self, prompts: List[str], **kwargs) -> List[str]:
         """Generate responses for a batch of prompts."""
         if not prompts:

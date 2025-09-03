@@ -38,3 +38,23 @@ summarization:
   output_suffix: "_summaries"
   extract_patterns: true
   save_original_text: true
+  
+# Dual model configuration for end-to-end mode
+dual_model:
+  use_different_models: false  # Set to true to use different models for summarization and evaluation
+  summarization_model:
+    name: "meta-llama/Llama-2-7b-chat-hf"  # Model for generating summaries
+    trust_remote_code: false
+    tensor_parallel_size: 1
+    dtype: "auto"
+    max_model_len: null
+    gpu_memory_utilization: 0.9
+    visible_devices: null
+  evaluation_model:
+    name: "microsoft/DialoGPT-medium"  # Model for evaluation
+    trust_remote_code: false  
+    tensor_parallel_size: 1
+    dtype: "auto"
+    max_model_len: null
+    gpu_memory_utilization: 0.9
+    visible_devices: null

@@ -47,6 +47,22 @@ class OutputConfig:
     save_detailed_results: bool = True
 
 
+@dataclass
+class SummarizationConfig:
+    """Configuration for summarization settings."""
+    output_suffix: str = "_summaries"
+    extract_patterns: bool = True
+    save_original_text: bool = True
+
+
+@dataclass 
+class DualModelConfig:
+    """Configuration for dual model setup in end-to-end mode."""
+    use_different_models: bool = False
+    summarization_model: ModelConfig = None
+    evaluation_model: ModelConfig = None
+
+
 def validate_config(cfg: DictConfig) -> None:
     """Validate the configuration."""
     required_fields = {

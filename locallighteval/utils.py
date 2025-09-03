@@ -103,6 +103,14 @@ def print_config_summary(cfg, output_dir: Path = None) -> None:
     if mode in ['summarization', 'end_to_end'] and 'summarization' in cfg:
         table.add_row("", "Summary Suffix", cfg.summarization.get('output_suffix', '_summaries'))
         table.add_row("", "Save Original", "✓" if cfg.summarization.get('save_original_text', True) else "✗")
+        
+        # Show dual model configuration if enabled
+        if mode == 'end_to_end' and 'dual_model' in cfg:
+            use_dual = cfg.dual_model.get('use_different_models', False)
+            table.add_row("", "Dual Models", "✓" if use_dual else "✗")
+            if use_dual:
+                table.add_row("", "Summary Model", cfg.dual_model.summarization_model.get('name', 'N/A'))
+                table.add_row("", "Eval Model", cfg.dual_model.evaluation_model.get('name', 'N/A'))
     
     console.print(table)
 
