@@ -2,6 +2,7 @@
 
 import os
 import torch
+import logging
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 from vllm import LLM, SamplingParams
@@ -62,6 +63,14 @@ class VLLMInferenceEngine:
             os.environ["CUDA_VISIBLE_DEVICES"] = str(self.model_config.visible_devices)
             logger.info(f"Set CUDA_VISIBLE_DEVICES to: {self.model_config.visible_devices}")
         
+        # Suppress vLLM verbose logging during model initialization
+        os.environ["VLLM_LOGGING_LEVEL"] = "WARNING"
+        
+        # Configure Python logging for vLLM components (helps with main process)
+        vllm_loggers = ['vllm', 'torch', 'transformers']
+        for logger_name in vllm_loggers:
+            logging.getLogger(logger_name).setLevel(logging.WARNING)
+        
         try:
             # Build vLLM arguments
             vllm_args = {
@@ -70,6 +79,7 @@ class VLLMInferenceEngine:
                 "tensor_parallel_size": self.model_config.tensor_parallel_size,
                 "dtype": self.model_config.dtype,
                 "gpu_memory_utilization": self.model_config.gpu_memory_utilization,
+                "disable_log_stats": True,  # Reduce vLLM's verbose statistics logging
             }
             
             # Only add max_model_len if specified
