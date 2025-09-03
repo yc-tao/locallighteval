@@ -20,7 +20,7 @@ from rich.live import Live
 console = Console()
 
 
-def setup_rich_logging(output_dir: Path, log_level: str = "INFO") -> None:
+def setup_rich_logging(output_dir: Path, log_level: str = "INFO", disable_vllm_logging: bool = False) -> None:
     """Setup Rich-enhanced logging configuration."""
     logger.remove()
     
@@ -44,6 +44,20 @@ def setup_rich_logging(output_dir: Path, log_level: str = "INFO") -> None:
     )
     
     logger.info(f"Logging initialized. Log file: {log_file}")
+    
+    # Configure VLLM logging
+    if disable_vllm_logging:
+        os.environ["VLLM_CONFIGURE_LOGGING"] = "0"
+        logger.info("VLLM logging disabled")
+    else:
+        # Use default VLLM logging or custom config if available
+        config_path = Path(__file__).parent.parent / "config" / "vllm_logging_config.json"
+        if config_path.exists():
+            os.environ["VLLM_CONFIGURE_LOGGING"] = "1"
+            os.environ["VLLM_LOGGING_CONFIG_PATH"] = str(config_path.absolute())
+            logger.info(f"VLLM logging configured with custom config: {config_path}")
+        else:
+            logger.info("VLLM logging using default configuration")
 
 
 def print_banner() -> None:

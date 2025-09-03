@@ -31,6 +31,7 @@ experiment_name: null
 seed: 42
 debug: false
 dry_run: false
+disable_vllm_logging: false  # Set to true to disable VLLM logging completely
 mode: evaluation  # Options: evaluation, summarization, end_to_end
 
 # Summarization settings (used when mode=summarization or mode=end_to_end)

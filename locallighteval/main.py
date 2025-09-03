@@ -104,7 +104,8 @@ def main(cfg: DictConfig) -> None:
         
         # Setup logging
         log_level = "DEBUG" if cfg.debug else "INFO"
-        setup_rich_logging(output_dir, log_level=log_level)
+        disable_vllm_logging = cfg.get('disable_vllm_logging', False)
+        setup_rich_logging(output_dir, log_level=log_level, disable_vllm_logging=disable_vllm_logging)
         
         # Print configuration summary
         print_config_summary(cfg, output_dir)

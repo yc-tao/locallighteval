@@ -16,10 +16,10 @@ data:
 
 # Model optimized for summarization (base model for now - LoRA merging needed for fine-tuned version)
 model:
-  name: "Qwen/Qwen3-4B-Instruct-2507"  # Base model that the LoRA was trained on
+  name: "/ssd-shared/qwen/qwen3-4b-clinical-RL-tuned"  # Base model that the LoRA was trained on
   gpu_memory_utilization: 0.95
   visible_devices: "7"
-  # TODO: Merge LoRA adapter from /ssd-shared/ryans_output/random_text_no_lower_limit/checkpoint-1600
+  max_model_len: 2048
 
 
 # Summarization-specific settings
