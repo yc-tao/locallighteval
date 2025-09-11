@@ -13,17 +13,18 @@ from .inference import VLLMInferenceEngine
 class ClinicalSummarizationEngine:
     """Engine for generating clinical summaries from discharge summaries."""
     
-    def __init__(self, inference_engine: VLLMInferenceEngine):
+    def __init__(self, inference_engine: VLLMInferenceEngine, debug: bool = False):
         """Initialize the summarization engine.
         
         Args:
             inference_engine: The vLLM inference engine to use for generation
+            debug: If True, print raw LLM responses for debugging
         """
         self.inference_engine = inference_engine
+        self.debug = debug
         self.prompt_template = (
-            "You are a clinical summarization assistant. Extract a short summary of this discharge summary between <summary> and </summary>. Be concise and to the point:\n\n"
-            "<discharge summary>\n{discharge_summary}\n</discharge summary>\n\n"
-            "Summary:"
+            "{full_note}\n\n"
+            "You are a clinical summarization assistant. Extract a short summary of this discharge summary between <summary> and </summary>. Be concise and to the point:"
         )
     
     def extract_discharge_summary(self, full_text: str) -> str:
@@ -56,17 +57,17 @@ class ClinicalSummarizationEngine:
         logger.warning("Could not extract discharge summary using patterns, using full text")
         return full_text
     
-    def generate_summary(self, discharge_summary: str) -> str:
-        """Generate a clinical summary for a single discharge summary.
+    def generate_summary(self, full_note: str) -> str:
+        """Generate a clinical summary for a full note.
         
         Args:
-            discharge_summary: The discharge summary text
+            full_note: The full note text from the JSON data
             
         Returns:
             Generated clinical summary
         """
         # Format the prompt
-        prompt = self.prompt_template.format(discharge_summary=discharge_summary)
+        prompt = self.prompt_template.format(full_note=full_note)
         
         # Generate response using the inference engine
         responses = self.inference_engine.generate([prompt])
@@ -76,6 +77,14 @@ class ClinicalSummarizationEngine:
             return ""
         
         generated_text = responses[0]
+        
+        # Print raw LLM response (generated tokens only) if debug mode is enabled
+        if self.debug:
+            print(f"\n{'='*80}")
+            print("LLM GENERATED TOKENS:")
+            print(f"{'='*80}")
+            print(generated_text)
+            print(f"{'='*80}\n")
         
         # Extract text between <summary> and </summary> tags
         summary_match = re.search(r'<summary>(.*?)</summary>', generated_text, re.DOTALL | re.IGNORECASE)
@@ -104,12 +113,9 @@ class ClinicalSummarizationEngine:
         processed_data = []
         
         for i, entry in enumerate(input_data):
-            # Extract the discharge summary from the full text
-            discharge_summary = self.extract_discharge_summary(entry['text'])
-            
-            # Generate summary
+            # Generate summary using the full note directly
             try:
-                summary = self.generate_summary(discharge_summary)
+                summary = self.generate_summary(entry['text'])
                 
                 # Create new entry with the summary as 'text' and preserve other fields
                 processed_entry = {

@@ -45,7 +45,8 @@ def run_summarization_pipeline(cfg: DictConfig, dataset, inference_engine: VLLMI
     engine_to_use = summarization_engine if summarization_engine is not None else inference_engine
     
     # Initialize summarization engine
-    summarizer = ClinicalSummarizationEngine(engine_to_use)
+    debug_mode = cfg.get('debug', False)
+    summarizer = ClinicalSummarizationEngine(engine_to_use, debug=debug_mode)
     
     # Convert dataset to list format for processing
     data_list = []
