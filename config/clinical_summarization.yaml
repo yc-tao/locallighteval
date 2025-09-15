@@ -11,18 +11,20 @@ mode: summarization
 
 # Data settings - update the path as needed
 data:
-  input_path: "/ssd-shared/report-distillation.json"
-  max_samples: 100  # Limit for testing
+  input_path: "/ssd-shared/ryans_output/mimic_iv_readmission_tuning.json"
+  max_samples: null  # Limit for testing
 
 # Model optimized for summarization (base model for now - LoRA merging needed for fine-tuned version)
 model:
-  name: "/ssd-shared/qwen/qwen3-4b-clinical-RL-tuned"  # Base model that the LoRA was trained on
+  name: "/ssd-shared/merged_models/qwen3-4b-tuned-0915"  # Base model that the LoRA was trained on
   gpu_memory_utilization: 0.95
-  visible_devices: "7"
+  visible_devices: "4,7"
   max_model_len: 2048
+  tensor_parallel_size: 2
 
 
 # Summarization-specific settings
 summarization:
   output_suffix: "_clinical_summaries"
   save_original_text: true
+  batch_size: 128

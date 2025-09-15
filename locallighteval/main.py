@@ -52,25 +52,31 @@ def run_summarization_pipeline(cfg: DictConfig, dataset, inference_engine: VLLMI
     data_list = []
     for batch in dataset.get_batches(len(dataset)):  # Get all data in one batch
         data_list.extend(batch)
-    
-    # Process with progress tracking
+
+    # Get batch size from config
+    batch_size = cfg.summarization.get('batch_size', 1)
+    logger.info(f"Using batch size: {batch_size}")
+
+    # Generate output filename for incremental saving
+    input_path = Path(cfg.data.input_path)
+    suffix = cfg.summarization.get('output_suffix', '_summaries')
+    output_filename = f"{input_path.stem}{suffix}.jsonl"
+    output_file = output_dir / output_filename
+
+    # Process with progress tracking and incremental saving
     with create_progress_bar() as progress:
         task_id = progress.add_task("Generating summaries...", total=len(data_list))
-        
+
         processed_data = summarizer.process_dataset(
-            data_list, 
-            progress=progress, 
+            data_list,
+            batch_size=batch_size,
+            output_path=output_file,
+            progress=progress,
             task_id=task_id
         )
     
-    # Generate output filename
-    input_path = Path(cfg.data.input_path)
-    suffix = cfg.summarization.get('output_suffix', '_summaries')
-    output_filename = f"{input_path.stem}{suffix}.json"
-    output_file = output_dir / output_filename
-    
-    # Save summaries
-    summarizer.save_summaries(processed_data, output_file)
+    # Results are already saved incrementally, but ensure final save for completeness
+    logger.info(f"Final results saved to: {output_file}")
     
     # Log completion
     end_time = datetime.now()
