@@ -13,15 +13,17 @@ from .config import ModelConfig, InferenceConfig
 
 class VLLMInferenceEngine:
     """Inference engine using vLLM for efficient LLM inference."""
-    
+
     def __init__(self, model_config: ModelConfig, inference_config: InferenceConfig):
         self.model_config = model_config
         self.inference_config = inference_config
         self.llm = None
         self.sampling_params = None
-        
+        self.tokenizer = None
+
         self._initialize_model()
         self._setup_sampling_params()
+        self._check_chat_template_support()
     
     def _validate_model_path(self) -> None:
         """Validate model path before loading."""
@@ -120,7 +122,33 @@ class VLLMInferenceEngine:
         )
         
         logger.info(f"Sampling parameters: {self.sampling_params}")
-    
+
+    def _check_chat_template_support(self) -> None:
+        """Load tokenizer for chat template formatting with thinking mode."""
+        try:
+            from transformers import AutoTokenizer
+
+            logger.info("Loading tokenizer for chat template with thinking mode...")
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.model_config.name,
+                trust_remote_code=self.model_config.trust_remote_code
+            )
+
+            # Validate that tokenizer has chat template
+            if not hasattr(self.tokenizer, 'chat_template') or self.tokenizer.chat_template is None:
+                raise RuntimeError(
+                    f"Model {self.model_config.name} does not support chat templates. "
+                    "Chat template is required for thinking mode."
+                )
+
+            logger.info("Tokenizer loaded successfully with chat template support")
+
+        except Exception as e:
+            logger.error(f"Failed to load tokenizer: {e}")
+            raise RuntimeError(
+                "Tokenizer is required for chat template formatting. "
+                "Please ensure the model supports chat templates."
+            ) from e
 
     def cleanup(self) -> None:
         """Clean up model resources and free GPU memory."""
@@ -139,14 +167,66 @@ class VLLMInferenceEngine:
         """Destructor to ensure cleanup on object deletion."""
         self.cleanup()
     
-    def generate(self, prompts: List[str], **kwargs) -> List[str]:
-        """Generate responses for a batch of prompts."""
+    def _format_prompts(self, prompts: List[Dict[str, str]]) -> List[str]:
+        """Format prompts using tokenizer's chat template with thinking mode enabled.
+
+        Args:
+            prompts: List of dicts with 'system' and 'user' keys (required format)
+
+        Returns:
+            List of formatted prompt strings
+        """
+        if not self.tokenizer:
+            raise RuntimeError("Tokenizer not initialized. Cannot format prompts.")
+
+        formatted_prompts = []
+
+        for i, prompt in enumerate(prompts):
+            # Validate prompt format
+            if not isinstance(prompt, dict):
+                raise ValueError(f"Prompt {i} must be a dict with 'system' and 'user' keys, got {type(prompt)}")
+
+            if 'user' not in prompt:
+                raise ValueError(f"Prompt {i} missing required 'user' key")
+
+            # Build messages list for chat template
+            messages = []
+            if 'system' in prompt and prompt['system']:
+                messages.append({'role': 'system', 'content': prompt['system']})
+            messages.append({'role': 'user', 'content': prompt['user']})
+
+            try:
+                # Apply chat template with thinking mode enabled
+                formatted = self.tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                    enable_thinking=True  # Enable thinking mode
+                )
+                formatted_prompts.append(formatted)
+            except Exception as e:
+                logger.error(f"Error applying chat template: {e}")
+                raise
+        return formatted_prompts
+
+    def generate(self, prompts: List[Dict[str, str]], **kwargs) -> List[str]:
+        """Generate responses for a batch of prompts.
+
+        Args:
+            prompts: List of dicts with 'system' and 'user' keys
+
+        Returns:
+            List of raw generated text strings
+        """
         if not prompts:
             return []
-        
+
         logger.debug(f"Generating responses for {len(prompts)} prompts")
-        
+
         try:
+            # Format prompts
+            formatted_prompts = self._format_prompts(prompts)
+
             # Override sampling params if provided
             sampling_params = self.sampling_params
             if kwargs:
@@ -157,7 +237,7 @@ class VLLMInferenceEngine:
                     output_tokens = kwargs.get('max_tokens', self.inference_config.max_tokens)
                     buffer = 50
                     truncate_prompt_tokens = model_max - output_tokens - buffer
-                
+
                 sampling_params = SamplingParams(
                     max_tokens=kwargs.get('max_tokens', self.inference_config.max_tokens),
                     temperature=kwargs.get('temperature', self.inference_config.temperature),
@@ -165,28 +245,39 @@ class VLLMInferenceEngine:
                     top_k=kwargs.get('top_k', self.inference_config.top_k),
                     truncate_prompt_tokens=truncate_prompt_tokens,
                 )
-            
-            outputs = self.llm.generate(prompts, sampling_params)
-            
+
+            outputs = self.llm.generate(formatted_prompts, sampling_params)
+
             responses = []
             for output in outputs:
-                generated_text = output.outputs[0].text
-                responses.append(generated_text)
-            
+                # Return raw generated text
+                full_text = output.outputs[0].text
+                responses.append(full_text)
+
             return responses
-            
+
         except Exception as e:
             logger.error(f"Error during generation: {e}")
             raise
     
-    def generate_with_metadata(self, prompts: List[str], **kwargs) -> List[Dict[str, Any]]:
-        """Generate responses with additional metadata."""
+    def generate_with_metadata(self, prompts: List[Dict[str, str]], **kwargs) -> List[Dict[str, Any]]:
+        """Generate responses with additional metadata.
+
+        Args:
+            prompts: List of dicts with 'system' and 'user' keys
+
+        Returns:
+            List of dicts with raw output and metadata
+        """
         if not prompts:
             return []
-        
+
         logger.debug(f"Generating responses with metadata for {len(prompts)} prompts")
-        
+
         try:
+            # Format prompts
+            formatted_prompts = self._format_prompts(prompts)
+
             sampling_params = self.sampling_params
             if kwargs:
                 # Calculate truncate_prompt_tokens for kwargs
@@ -196,7 +287,7 @@ class VLLMInferenceEngine:
                     output_tokens = kwargs.get('max_tokens', self.inference_config.max_tokens)
                     buffer = 50
                     truncate_prompt_tokens = model_max - output_tokens - buffer
-                
+
                 sampling_params = SamplingParams(
                     max_tokens=kwargs.get('max_tokens', self.inference_config.max_tokens),
                     temperature=kwargs.get('temperature', self.inference_config.temperature),
@@ -204,19 +295,23 @@ class VLLMInferenceEngine:
                     top_k=kwargs.get('top_k', self.inference_config.top_k),
                     truncate_prompt_tokens=truncate_prompt_tokens,
                 )
-            
-            outputs = self.llm.generate(prompts, sampling_params)
-            
+
+            outputs = self.llm.generate(formatted_prompts, sampling_params)
+
             results = []
             for i, output in enumerate(outputs):
+                # Get raw output
+                full_text = output.outputs[0].text
+
                 # Check if truncation occurred by comparing token counts
                 expected_tokens = len(output.prompt_token_ids)
                 max_prompt_tokens = sampling_params.truncate_prompt_tokens
                 prompt_truncated = max_prompt_tokens is not None and expected_tokens >= max_prompt_tokens
-                
+
                 result = {
-                    "prompt": prompts[i],  # Original prompt
-                    "generated_text": output.outputs[0].text,
+                    "prompt": prompts[i],  # Original prompt (before formatting)
+                    "formatted_prompt": formatted_prompts[i],  # Formatted prompt
+                    "generated_text": full_text,  # Raw output
                     "prompt_tokens": len(output.prompt_token_ids),
                     "completion_tokens": len(output.outputs[0].token_ids),
                     "total_tokens": len(output.prompt_token_ids) + len(output.outputs[0].token_ids),
@@ -224,9 +319,9 @@ class VLLMInferenceEngine:
                     "prompt_truncated": prompt_truncated,  # Flag if truncation likely occurred
                 }
                 results.append(result)
-            
+
             return results
-            
+
         except Exception as e:
             logger.error(f"Error during generation with metadata: {e}")
             raise
@@ -239,41 +334,50 @@ class BinaryClassificationInference:
         self.inference_engine = inference_engine
     
     def create_classification_prompt(
-        self, 
-        text: str, 
+        self,
+        text: str,
         instruction: str = "Classify the following text as positive (1) or negative (0). Respond with only the number.",
         few_shot_examples: Optional[List[Dict[str, Any]]] = None
-    ) -> str:
-        """Create a prompt for binary classification."""
-        prompt = instruction + "\n\n"
-        
+    ) -> Dict[str, str]:
+        """Create a prompt for binary classification in dict format.
+
+        Returns:
+            Dict with 'system' and 'user' keys
+        """
+        system_prompt = "You are a helpful assistant that classifies text."
+
+        user_content = instruction + "\n\n"
+
         if few_shot_examples:
             for example in few_shot_examples:
-                prompt += f"Text: {example['text']}\nLabel: {example['label']}\n\n"
-        
-        prompt += f"Text: {text}\nLabel:"
-        
-        return prompt
+                user_content += f"Text: {example['text']}\nLabel: {example['label']}\n\n"
+
+        user_content += f"Text: {text}\nLabel:"
+
+        return {
+            "system": system_prompt,
+            "user": user_content
+        }
     
     def classify_batch(
-        self, 
+        self,
         texts: List[str],
         instruction: str = "Classify the following text as positive (1) or negative (0). Respond with only the number.",
         few_shot_examples: Optional[List[Dict[str, Any]]] = None
     ) -> List[Dict[str, Any]]:
         """Classify a batch of texts."""
         logger.info(f"Classifying {len(texts)} texts")
-        
-        # Create prompts
+
+        # Create prompts in dict format
         prompts = [
-            self.create_classification_prompt(text, instruction, few_shot_examples) 
+            self.create_classification_prompt(text, instruction, few_shot_examples)
             for text in texts
         ]
-        
+
         # Generate responses with metadata
         results = self.inference_engine.generate_with_metadata(prompts)
-        
-        # Process results
+
+        # Process results - parse raw output
         processed_results = []
         for i, result in enumerate(results):
             processed_result = {
@@ -287,7 +391,7 @@ class BinaryClassificationInference:
                 "finish_reason": result["finish_reason"]
             }
             processed_results.append(processed_result)
-        
+
         return processed_results
     
     def _parse_classification_response(self, response: str) -> Optional[int]:

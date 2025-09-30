@@ -1,0 +1,5 @@
+# Prompts configuration for clinical summarization
+
+clinical_summary:
+  system: "You are a clinical summarization assistant."
+  user: "{full_note} \n\n First, think step by step between <thinking> and </thinking>. Then, extract a short summary of this discharge summary between <summary> and </summary>. Be concise and to the point. "

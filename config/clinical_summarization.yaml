@@ -16,11 +16,11 @@ data:
 
 # Model optimized for summarization (base model for now - LoRA merging needed for fine-tuned version)
 model:
-  name: "/ssd-shared/merged_models/qwen3-4b-tuned-0915"  # Base model that the LoRA was trained on
+  name: "/ssd-shared/qwen/Qwen3-4B-Instruct-2507"  # Base model that the LoRA was trained on
   gpu_memory_utilization: 0.95
-  visible_devices: "4,7"
+  visible_devices: "7,4,0,1"
   max_model_len: 2048
-  tensor_parallel_size: 2
+  tensor_parallel_size: 4
 
 
 # Summarization-specific settings
@@ -28,3 +28,6 @@ summarization:
   output_suffix: "_clinical_summaries"
   save_original_text: true
   batch_size: 128
+  prompt_config_path: "config/prompts.yaml"  # Path to prompts configuration
+  prompt_type: "clinical_summary"  # Default prompt type to use
+  cleanup_discharge_text: false  # Clean up discharge summary text (remove extra headers/footers)

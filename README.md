@@ -6,6 +6,9 @@ A comprehensive LLM evaluation and clinical text summarization framework using v
 
 - **Multiple Operating Modes**: Standard evaluation, summarization-only, and end-to-end pipelines
 - **Clinical Text Summarization**: Specialized engine for processing medical discharge summaries
+- **Prompt Management System**: Configurable prompts via YAML files with template variable substitution
+- **Chat Template Integration**: Support for model-specific chat templates with thinking mode
+- **Text Cleanup**: Optional preprocessing to remove headers/footers from discharge summaries
 - **Dual Model Architecture**: Use different models for summarization and evaluation phases
 - **High-Performance Inference**: Built on vLLM for efficient GPU utilization and fast inference
 - **LoRA Integration**: Utility to merge LoRA adapters with base models for vLLM compatibility
@@ -86,9 +89,13 @@ LocalLightEval includes a specialized `ClinicalSummarizationEngine` for processi
 
 ### Features
 - **Pattern-based extraction** of discharge summary content from complex medical records
-- **Template-driven summarization** with clinical-specific prompts
+- **Template-driven summarization** with clinical-specific prompts via configurable YAML files
+- **Text cleanup** to remove extraneous headers and footers from discharge summaries
+- **Chat template integration** with model-specific formatting and thinking mode support
 - **Structured output** with summary tags for reliable parsing
+- **Batch processing** with configurable batch sizes for efficient inference
 - **Error handling** and fallback mechanisms for robust processing
+- **Debug mode** with detailed logging of prompts and responses
 
 ### Usage Examples
 
@@ -98,10 +105,19 @@ python -m locallighteval.main --config-name=clinical_summarization \
     model.name=/path/to/clinical-model \
     data.input_path=/path/to/discharge_summaries.json
 
-# Quick test with small dataset
-python -m locallighteval.main --config-name=quick_test \
-    mode=summarization \
+# Enable text cleanup to remove headers/footers
+python -m locallighteval.main --config-name=clinical_summarization \
+    summarization.cleanup_discharge_text=true
+
+# Debug mode with detailed logging
+python -m locallighteval.main --config-name=clinical_summarization \
+    debug=true \
     data.max_samples=10
+
+# Custom prompt configuration
+python -m locallighteval.main --config-name=clinical_summarization \
+    summarization.prompt_config_path=config/my_prompts.yaml \
+    summarization.prompt_type=clinical_summary
 ```
 
 ### Input Data Format
@@ -117,6 +133,60 @@ Clinical summarization expects JSON files with discharge summary data:
 ```
 
 The system automatically extracts the relevant discharge summary content from the full text.
+
+## Prompt Management System
+
+LocalLightEval includes a flexible prompt management system for customizable text generation:
+
+### Features
+- **YAML-based configuration** for easy prompt modification
+- **Template variable substitution** with Python format strings
+- **System and user message separation** for chat-based models
+- **Multiple prompt types** in a single configuration file
+- **Default fallback prompts** when configuration is unavailable
+
+### Prompt Configuration
+
+Create a YAML file (e.g., `config/prompts.yaml`):
+
+```yaml
+clinical_summary:
+  system: "You are a clinical summarization assistant."
+  user: "{full_note}\n\nFirst, think step by step between <thinking> and </thinking>. Then, extract a short summary of this discharge summary between <summary> and </summary>. Be concise and to the point."
+
+custom_prompt:
+  system: "You are a helpful medical assistant."
+  user: "Summarize the following: {full_note}"
+```
+
+### Usage
+
+```bash
+# Use custom prompts
+python -m locallighteval.main --config-name=clinical_summarization \
+    summarization.prompt_config_path=config/my_prompts.yaml \
+    summarization.prompt_type=clinical_summary
+
+# Prompts support template variables that get substituted at runtime
+# Available variables: full_note, text, and any custom variables you define
+```
+
+### Programmatic Usage
+
+```python
+from locallighteval.prompts import PromptManager
+
+# Load from config file
+pm = PromptManager.from_config_file(Path("config/prompts.yaml"))
+
+# Format prompts with variables
+formatted = pm.format_prompt("clinical_summary", full_note="Patient data...")
+# Returns: {"system": "...", "user": "Patient data..."}
+
+# Use default prompts
+pm = PromptManager()
+prompts = pm.format_prompt("clinical_summary", full_note="...")
+```
 
 ## Dual Model Pipeline
 
@@ -278,9 +348,42 @@ dual_model:
 summarization:
   output_suffix: "_summaries"
   save_original_text: true
+  batch_size: 128
+  prompt_config_path: "config/prompts.yaml"
+  prompt_type: "clinical_summary"
+  cleanup_discharge_text: false
 ```
 
 ## Advanced Features
+
+### Clinical Text Processing
+
+**Discharge Text Cleanup**:
+```bash
+# Enable cleanup to remove headers/footers from discharge summaries
+python -m locallighteval.main --config-name=clinical_summarization \
+    summarization.cleanup_discharge_text=true
+```
+
+This feature removes common artifacts like:
+- Headers: `"Here is the discharge summary:"` and variations
+- Footers: `"Summary:"` and similar trailing text
+- Excessive whitespace
+
+**Custom Prompts**:
+```bash
+# Use custom prompt configuration
+python -m locallighteval.main --config-name=clinical_summarization \
+    summarization.prompt_config_path=config/my_prompts.yaml \
+    summarization.prompt_type=my_custom_prompt
+```
+
+**Batch Size Optimization**:
+```bash
+# Adjust batch size for summarization
+python -m locallighteval.main --config-name=clinical_summarization \
+    summarization.batch_size=64
+```
 
 ### GPU Memory Optimization
 ```bash

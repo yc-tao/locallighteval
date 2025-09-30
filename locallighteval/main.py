@@ -15,6 +15,7 @@ from .data_loader import load_dataset
 from .inference import VLLMInferenceEngine, BinaryClassificationInference
 from .metrics import BinaryClassificationMetrics
 from .summarization import ClinicalSummarizationEngine
+from .prompts import PromptManager
 from .utils import (
     setup_rich_logging, print_banner, print_config_summary, 
     create_progress_bar, print_gpu_info, save_run_metadata,
@@ -44,18 +45,42 @@ def run_summarization_pipeline(cfg: DictConfig, dataset, inference_engine: VLLMI
     # Use the provided summarization engine or the default inference engine
     engine_to_use = summarization_engine if summarization_engine is not None else inference_engine
     
+    # Initialize prompt manager
+    prompt_config_path = cfg.summarization.get('prompt_config_path', 'config/prompts.yaml')
+    prompt_type = cfg.summarization.get('prompt_type', 'clinical_summary')
+
+    try:
+        # Try to load prompts from config file
+        prompt_manager = PromptManager.from_config_file(Path(prompt_config_path))
+        logger.info(f"Loaded prompts from {prompt_config_path}")
+    except Exception as e:
+        logger.warning(f"Failed to load prompt config from {prompt_config_path}: {e}")
+        logger.info("Using default prompts")
+        prompt_manager = PromptManager()
+
     # Initialize summarization engine
     debug_mode = cfg.get('debug', False)
-    summarizer = ClinicalSummarizationEngine(engine_to_use, debug=debug_mode)
+    cleanup_discharge_text = cfg.summarization.get('cleanup_discharge_text', False)
+    summarizer = ClinicalSummarizationEngine(
+        engine_to_use,
+        prompt_manager=prompt_manager,
+        prompt_type=prompt_type,
+        debug=debug_mode,
+        cleanup_discharge_text=cleanup_discharge_text
+    )
     
     # Convert dataset to list format for processing
     data_list = []
     for batch in dataset.get_batches(len(dataset)):  # Get all data in one batch
         data_list.extend(batch)
 
-    # Get batch size from config
+    # Get batch size from config, but force to 1 in debug mode
     batch_size = cfg.summarization.get('batch_size', 1)
-    logger.info(f"Using batch size: {batch_size}")
+    if debug_mode:
+        batch_size = 1
+        logger.info(f"Debug mode enabled: forcing batch size to 1")
+    else:
+        logger.info(f"Using batch size: {batch_size}")
 
     # Generate output filename for incremental saving
     input_path = Path(cfg.data.input_path)

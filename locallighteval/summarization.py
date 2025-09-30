@@ -9,24 +9,31 @@ from loguru import logger
 from rich.progress import Progress, TaskID
 
 from .inference import VLLMInferenceEngine
+from .prompts import PromptManager
 
 
 class ClinicalSummarizationEngine:
     """Engine for generating clinical summaries from discharge summaries."""
     
-    def __init__(self, inference_engine: VLLMInferenceEngine, debug: bool = False):
+    def __init__(self, inference_engine: VLLMInferenceEngine,
+                 prompt_manager: Optional[PromptManager] = None,
+                 prompt_type: str = "clinical_summary",
+                 debug: bool = False,
+                 cleanup_discharge_text: bool = False):
         """Initialize the summarization engine.
-        
+
         Args:
             inference_engine: The vLLM inference engine to use for generation
+            prompt_manager: Optional prompt manager for handling prompts
+            prompt_type: Type of prompt to use from the prompt manager
             debug: If True, print raw LLM responses for debugging
+            cleanup_discharge_text: If True, clean up discharge text by removing extra headers/footers
         """
         self.inference_engine = inference_engine
+        self.prompt_manager = prompt_manager or PromptManager()
+        self.prompt_type = prompt_type
         self.debug = debug
-        self.prompt_template = (
-            "{full_note}\n\n"
-            "You are a clinical summarization assistant. Extract a short summary of this discharge summary between <summary> and </summary>. Be concise and to the point:"
-        )
+        self.cleanup_discharge_text = cleanup_discharge_text
     
     def extract_discharge_summary(self, full_text: str) -> str:
         """Extract the discharge summary from the full text.
@@ -57,7 +64,43 @@ class ClinicalSummarizationEngine:
         # If no pattern matches, return the full text (fallback)
         logger.warning("Could not extract discharge summary using patterns, using full text")
         return full_text
-    
+
+    def _cleanup_discharge_text(self, text: str) -> str:
+        """Clean up discharge summary text by removing extra headers and footers.
+
+        Args:
+            text: The discharge summary text to clean up
+
+        Returns:
+            Cleaned discharge summary text
+        """
+        cleaned_text = text
+
+        # Remove the prefix pattern: "\n\n        Here is the discharge summary:\n\n"
+        # This pattern may have variations in whitespace
+        prefix_patterns = [
+            r'^\s*Here is the discharge summary:\s*',
+            r'^\s*here is the discharge summary:\s*',
+        ]
+
+        for pattern in prefix_patterns:
+            cleaned_text = re.sub(pattern, '', cleaned_text, flags=re.IGNORECASE)
+
+        # Remove trailing "Summary:" at the end
+        # Also handle variations with whitespace
+        suffix_patterns = [
+            r'\s*Summary:\s*$',
+            r'\s*summary:\s*$',
+        ]
+
+        for pattern in suffix_patterns:
+            cleaned_text = re.sub(pattern, '', cleaned_text, flags=re.IGNORECASE)
+
+        # Clean up any excessive whitespace at the beginning or end
+        cleaned_text = cleaned_text.strip()
+
+        return cleaned_text
+
     def generate_summary(self, full_note: str) -> str:
         """Generate a clinical summary for a single full note.
 
@@ -82,12 +125,27 @@ class ClinicalSummarizationEngine:
         if not full_notes:
             return []
 
-        # Format the prompts
-        prompts = [self.prompt_template.format(full_note=note) for note in full_notes]
+        # Clean up discharge text if enabled
+        processed_notes = full_notes
+        if self.cleanup_discharge_text:
+            processed_notes = [self._cleanup_discharge_text(note) for note in full_notes]
+            logger.debug(f"Applied discharge text cleanup to {len(full_notes)} notes")
+
+        # Format the prompts using the prompt manager - always use dict format
+        prompts = []
+        for i, note in enumerate(processed_notes):
+            formatted_prompts = self.prompt_manager.format_prompt(self.prompt_type, full_note=note)
+            prompts.append(formatted_prompts)
+
+            # Print input prompt in debug mode
+            if self.debug:
+                logger.debug(f"Input prompt to LLM (batch item {i+1}): {formatted_prompts}")
 
         # Generate responses using the inference engine batch processing
         try:
             responses = self.inference_engine.generate(prompts)
+            if self.debug:
+                logger.debug(f"Generated text: {responses}")
         except Exception as e:
             logger.error(f"Batch inference failed: {e}")
             return [""] * len(full_notes)
@@ -103,24 +161,32 @@ class ClinicalSummarizationEngine:
                 summaries.append("")
                 continue
 
-            # Print raw LLM response (generated tokens only) if debug mode is enabled
-            if self.debug:
-                print(f"\n{'='*80}")
-                print(f"LLM GENERATED TOKENS (batch item {i+1}):")
-                print(f"{'='*80}")
-                print(generated_text)
-                print(f"{'='*80}\n")
-
-            # Extract text between <summary> and </summary> tags
+            # Extract text between <summary> and </summary> tags from raw output
             summary_match = re.search(r'<summary>(.*?)</summary>', generated_text, re.DOTALL | re.IGNORECASE)
             if summary_match:
                 summary = summary_match.group(1).strip()
-                logger.debug(f"Extracted summary for item {i+1}: {summary[:100]}...")
-                summaries.append(summary)
+                # If extracted summary is too short (< 30 chars), fall back to original text
+                if len(summary) < 30:
+                    logger.warning(f"Extracted summary for item {i+1} is too short ({len(summary)} chars), using original text")
+                    summaries.append(full_notes[i])
+                else:
+                    logger.debug(f"Extracted summary for item {i+1}: {summary[:100]}...")
+                    summaries.append(summary)
             else:
-                # If no tags found, return the generated text as is (but log warning)
-                logger.warning(f"Generated text for item {i+1} does not contain <summary> tags, using raw output")
-                summaries.append(generated_text.strip())
+                # Try to extract JSON format with "answer" field, use longest if multiple found
+                json_matches = re.findall(r'\{[^}]*"answer"\s*:\s*"([^"]+)"[^}]*\}', generated_text, re.DOTALL)
+                if json_matches:
+                    summary = max(json_matches, key=len).strip()
+                    if len(summary) < 30:
+                        logger.warning(f"Extracted JSON summary for item {i+1} is too short ({len(summary)} chars), using original text")
+                        summaries.append(full_notes[i])
+                    else:
+                        logger.debug(f"Extracted JSON summary for item {i+1}: {summary[:100]}...")
+                        summaries.append(summary)
+                else:
+                    # If no tags or JSON found, return the raw output as is (but log warning)
+                    logger.warning(f"Generated text for item {i+1} does not contain <summary> tags or JSON format, using raw output")
+                    summaries.append(generated_text.strip())
 
         return summaries
     

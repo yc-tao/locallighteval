@@ -54,6 +54,7 @@ class SummarizationConfig:
     output_suffix: str = "_summaries"
     extract_patterns: bool = True
     save_original_text: bool = True
+    cleanup_discharge_text: bool = False
 
 
 @dataclass 
