@@ -3,7 +3,7 @@
 Script to merge LoRA adapter with base model for vLLM compatibility.
 
 Usage:
-    python merge_lora.py --base_model Qwen/Qwen3-4B-Instruct-2507 \
+    python merge_lora.py --base_model /path/to/local/base/model \
                         --lora_path /ssd-shared/ryans_output/random_text_no_lower_limit/checkpoint-1600 \
                         --output_path /ssd-shared/merged_models/qwen3-4b-clinical-merged
 """
@@ -15,22 +15,34 @@ from pathlib import Path
 def merge_lora_adapter(base_model: str, lora_path: str, output_path: str):
     """Merge LoRA adapter with base model."""
     try:
-        from peft import AutoPeftModelForCausalLM
-        from transformers import AutoTokenizer
+        from peft import AutoPeftModelForCausalLM, PeftModel
+        from transformers import AutoTokenizer, AutoModelForCausalLM
         import torch
-        
-        print(f"Loading LoRA model from {lora_path}...")
-        print(f"Base model: {base_model}")
-        
-        # Load the PEFT model directly (it will load the base model automatically)
-        model = AutoPeftModelForCausalLM.from_pretrained(
-            lora_path,
+
+        print(f"Loading base model from local path: {base_model}")
+        print(f"Loading LoRA adapter from: {lora_path}")
+
+        # First load the base model from local path
+        base_model_obj = AutoModelForCausalLM.from_pretrained(
+            base_model,
             torch_dtype=torch.float16,
-            device_map="auto"
+            device_map="auto",
+            local_files_only=True  # Force local loading
+        )
+
+        # Load the PEFT model with the explicit base model
+        model = PeftModel.from_pretrained(
+            base_model_obj,
+            lora_path,
+            torch_dtype=torch.float16
         )
         
-        # Load tokenizer from the LoRA path (should have tokenizer files)
-        tokenizer = AutoTokenizer.from_pretrained(lora_path)
+        # Try to load tokenizer from LoRA path first, fallback to base model
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(lora_path)
+        except:
+            print("Tokenizer not found in LoRA path, loading from base model...")
+            tokenizer = AutoTokenizer.from_pretrained(base_model, local_files_only=True)
         
         print("Merging LoRA adapter with base model...")
         # Merge the adapter weights into the base model
@@ -58,7 +70,7 @@ def merge_lora_adapter(base_model: str, lora_path: str, output_path: str):
 
 def main():
     parser = argparse.ArgumentParser(description="Merge LoRA adapter with base model")
-    parser.add_argument("--base_model", default="Qwen/Qwen3-4B-Instruct-2507", help="Base model name")
+    parser.add_argument("--base_model", default="Qwen/Qwen3-4B-Instruct-2507", help="Local path to base model directory")
     parser.add_argument("--lora_path", required=True, help="Path to LoRA adapter")
     parser.add_argument("--output_path", required=True, help="Output path for merged model")
     

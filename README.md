@@ -546,15 +546,6 @@ python -m locallighteval.main model.name=meta-llama/Llama-2-7b-chat-hf
 python -m locallighteval.main model.name=mistralai/Mistral-7B-Instruct-v0.1
 ```
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Submit a pull request with clear description
-
-For clinical summarization features, please include medical domain expertise validation.
-
 ## Acknowledgments
 
 - Built on [vLLM](https://github.com/vllm-project/vllm) for efficient inference
@@ -565,4 +556,4 @@ For clinical summarization features, please include medical domain expertise val
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the Apache 2.0 License - see the LICENSE file for details.
